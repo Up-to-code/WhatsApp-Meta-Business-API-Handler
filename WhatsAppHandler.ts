@@ -1,6 +1,11 @@
 /**
  * WhatsApp Meta Business API Handler with Webhook Support
  * TypeScript implementation for Node.js 16+
+ * 
+ * Copyright (c) 2023 Up-to-code
+ * 
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
  */
 
 import * as crypto from 'crypto';
