@@ -1,388 +1,727 @@
-# WhatsApp Meta Business API Handler
+# WhatsApp Business API Handler
 
-A lightweight, easy-to-use TypeScript wrapper for WhatsApp Cloud API. Send messages, media, buttons, and more with full type safety.
+A comprehensive TypeScript/JavaScript library for integrating WhatsApp Business API with webhook support. Works seamlessly with Express.js, Next.js, and any Node.js environment.
 
 ## Features
 
-- ✅ **Full TypeScript support** with type definitions
-- ✅ Send text messages
-- ✅ Send media (images, videos, audio, documents)
-- ✅ Mark messages as read
-- ✅ Send reactions (emojis)
-- ✅ Send location
-- ✅ Send template messages
-- ✅ Send interactive buttons
-- ✅ Send interactive lists
-- ✅ Upload and download media
-- ✅ Read messages by ID
-
-## Prerequisites
-
-Before using this handler, you need:
-
-1. **Meta Business Account** - Sign up at [business.facebook.com](https://business.facebook.com)
-2. **WhatsApp Business App** - Create one in Meta Business Suite
-3. **Phone Number ID** - Get this from your WhatsApp Business API setup
-4. **Access Token** - Generate from Meta Developer Portal
-5. **Verified Business Phone Number** - Required for sending messages
+- 🚀 Full WhatsApp Business API support
+- 🔄 Built-in webhook handling with signature verification
+- 📨 Send text, media, location, contacts, templates, and interactive messages
+- ⚡ Rate limiting and auto-retry mechanisms
+- 🔒 Secure webhook signature verification
+- 🎯 TypeScript support with full type definitions
+- 🌐 Works with Express.js, Next.js, Fastify, and standalone Node.js
 
 ## Installation
 
 ```bash
-npm install @types/node
+npm install
 ```
 
-Then import the class:
+### For Node.js 16-17 (no native fetch):
 
+```bash
+npm install node-fetch@2 @types/node-fetch
+```
+
+Then add to your code:
 ```typescript
-import WhatsAppHandler from './WhatsAppHandler';
+import fetch from 'node-fetch';
+global.fetch = fetch as any;
 ```
 
 ## Configuration
 
-Initialize the handler with your credentials:
+Get your credentials from [Meta Business Suite](https://business.facebook.com/):
+
+1. Create a WhatsApp Business App
+2. Get your `Access Token` and `Phone Number ID`
+3. Set up webhook with `Verify Token` and `App Secret`
+
+## Quick Start
+
+### Basic Setup
 
 ```typescript
+import { WhatsAppHandler } from './whatsapp-handler';
+
 const whatsapp = new WhatsAppHandler({
   token: 'YOUR_ACCESS_TOKEN',
   phoneNumberId: 'YOUR_PHONE_NUMBER_ID',
-  businessAccountId: 'YOUR_BUSINESS_ACCOUNT_ID', // optional
-  version: 'v21.0' // API version, optional (default: v21.0)
+  webhookVerifyToken: 'YOUR_VERIFY_TOKEN',
+  appSecret: 'YOUR_APP_SECRET',
+  businessAccountId: 'YOUR_BUSINESS_ACCOUNT_ID', // Optional
+  version: 'v21.0', // Optional, default: v21.0
+  apiTimeout: 30000, // Optional, default: 30000ms
+  maxRetries: 3, // Optional, default: 3
+  rateLimitPerSecond: 80 // Optional, default: 80
 });
 ```
 
-### Getting Your Credentials
-
-1. **Access Token**: Go to Meta Developer Portal → Your App → WhatsApp → API Setup
-2. **Phone Number ID**: Found in the same API Setup section
-3. **Business Account ID**: Available in Business Settings
-
-## Usage Examples
-
-### Send Text Message
+### Sending Messages
 
 ```typescript
-await whatsapp.sendMessage('1234567890', 'Hello from WhatsApp API!');
-```
+// Send text message
+await whatsapp.sendMessage('1234567890', 'Hello, World!');
 
-**Note**: Phone numbers should include country code without the `+` sign (e.g., `1234567890` for US number).
+// Send text with URL preview
+await whatsapp.sendMessage('1234567890', 'Check this: https://example.com', true);
 
-### Send Image with Caption
+// Send image
+await whatsapp.sendMedia('1234567890', 'image', 'https://example.com/image.jpg', 'Caption');
 
-```typescript
-await whatsapp.sendMediaWithMessage(
-  '1234567890', 
-  'image', 
-  'https://example.com/image.jpg', 
-  'Check out this amazing photo!'
-);
-```
+// Send document
+await whatsapp.sendMedia('1234567890', 'document', 'MEDIA_ID', 'Caption', 'filename.pdf');
 
-### Send Document
+// Send location
+await whatsapp.sendLocation('1234567890', 37.7749, -122.4194, 'San Francisco', '123 Main St');
 
-```typescript
-await whatsapp.sendMedia(
-  '1234567890',
-  'document',
-  'https://example.com/report.pdf',
-  { filename: 'Monthly_Report.pdf' }
-);
-```
+// Send contact
+await whatsapp.sendContact('1234567890', [{
+  name: {
+    formatted_name: 'John Doe',
+    first_name: 'John',
+    last_name: 'Doe'
+  },
+  phones: [{
+    phone: '+1234567890',
+    type: 'MOBILE'
+  }]
+}]);
 
-### Mark Message as Read
+// Send template
+await whatsapp.sendTemplate('1234567890', {
+  name: 'hello_world',
+  language: { code: 'en_US' }
+});
 
-```typescript
-await whatsapp.markAsRead('wamid.HBgNMTIzNDU2Nzg5MAxx==');
-```
-
-### Send Reaction
-
-```typescript
-await whatsapp.sendReaction('1234567890', 'wamid.XXX==', '👍');
-```
-
-### Send Location
-
-```typescript
-await whatsapp.sendLocation(
-  '1234567890',
-  37.7749,
-  -122.4194,
-  'San Francisco Office',
-  '123 Market St, San Francisco, CA'
-);
-```
-
-### Send Interactive Buttons
-
-```typescript
-await whatsapp.sendButtons(
-  '1234567890',
-  'Please select an option:',
-  [
-    { id: 'option1', title: 'Option 1' },
-    { id: 'option2', title: 'Option 2' },
-    { id: 'option3', title: 'Option 3' }
-  ],
-  {
-    header: 'Welcome!',
-    footer: 'Powered by WhatsApp API'
+// Send interactive buttons
+await whatsapp.sendInteractive('1234567890', {
+  type: 'button',
+  body: { text: 'Choose an option:' },
+  action: {
+    buttons: [
+      { type: 'reply', reply: { id: 'btn1', title: 'Option 1' } },
+      { type: 'reply', reply: { id: 'btn2', title: 'Option 2' } }
+    ]
   }
-);
+});
+
+// Mark message as read
+await whatsapp.markAsRead('MESSAGE_ID');
 ```
-
-### Send Interactive List
-
-```typescript
-await whatsapp.sendList(
-  '1234567890',
-  'Choose a product category:',
-  'View Options',
-  [
-    {
-      title: 'Electronics',
-      rows: [
-        { id: 'phone', title: 'Smartphones', description: 'Latest phones' },
-        { id: 'laptop', title: 'Laptops', description: 'Premium laptops' }
-      ]
-    },
-    {
-      title: 'Clothing',
-      rows: [
-        { id: 'shirt', title: 'Shirts', description: 'Casual wear' },
-        { id: 'shoes', title: 'Shoes', description: 'Sports shoes' }
-      ]
-    }
-  ],
-  {
-    header: 'Product Catalog',
-    footer: 'Select to view details'
-  }
-);
-```
-
-### Send Template Message
-
-```typescript
-await whatsapp.sendTemplate(
-  '1234567890',
-  'hello_world',
-  'en_US',
-  [
-    {
-      type: 'body',
-      parameters: [
-        { type: 'text', text: 'John Doe' }
-      ]
-    }
-  ]
-);
-```
-
-### Upload Media
-
-```typescript
-// Upload from File object
-const file = document.getElementById('fileInput').files[0];
-const response = await whatsapp.uploadMedia(file);
-console.log('Media ID:', response.id);
-
-// Use the media ID to send
-await whatsapp.sendMedia('1234567890', 'image', response.id);
-```
-
-### Get Media URL
-
-```typescript
-const mediaInfo = await whatsapp.getMediaUrl('MEDIA_ID');
-console.log('Media URL:', mediaInfo.url);
-```
-
-### Download Media
-
-```typescript
-const mediaUrl = 'https://lookaside.fbsbx.com/whatsapp_business/...';
-const blob = await whatsapp.downloadMedia(mediaUrl);
-
-// Create download link
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'media-file';
-a.click();
-```
-
-## TypeScript Types
-
-### Interfaces
-
-```typescript
-interface WhatsAppConfig {
-  token: string;
-  phoneNumberId: string;
-  businessAccountId?: string;
-  version?: string;
-}
-
-interface Button {
-  id: string;
-  title: string;
-}
-
-interface ListSection {
-  title: string;
-  rows: Array<{
-    id: string;
-    title: string;
-    description?: string;
-  }>;
-}
-
-type MediaType = 'image' | 'video' | 'audio' | 'document';
-```
-
-### Response Types
-
-```typescript
-interface MessageResponse {
-  messaging_product: string;
-  contacts: Array<{ input: string; wa_id: string }>;
-  messages: Array<{ id: string }>;
-}
-
-interface MediaResponse {
-  id: string;
-}
-
-interface MediaUrlResponse {
-  url: string;
-  mime_type: string;
-  sha256: string;
-  file_size: number;
-  id: string;
-  messaging_product: string;
-}
-```
-
-## API Methods Reference
-
-| Method | Return Type | Parameters |
-|--------|-------------|------------|
-| `sendMessage()` | `Promise<MessageResponse>` | `to: string, message: string` |
-| `sendMedia()` | `Promise<MessageResponse>` | `to: string, mediaType: MediaType, mediaUrl: string, options?` |
-| `sendMediaWithMessage()` | `Promise<MessageResponse>` | `to: string, mediaType: MediaType, mediaUrl: string, caption: string` |
-| `markAsRead()` | `Promise<{success: boolean}>` | `messageId: string` |
-| `readMessage()` | `Promise<any>` | `messageId: string` |
-| `sendReaction()` | `Promise<MessageResponse>` | `to: string, messageId: string, emoji: string` |
-| `sendLocation()` | `Promise<MessageResponse>` | `to: string, latitude: number, longitude: number, name: string, address: string` |
-| `sendTemplate()` | `Promise<MessageResponse>` | `to: string, templateName: string, languageCode: string, components?` |
-| `sendButtons()` | `Promise<MessageResponse>` | `to: string, bodyText: string, buttons: Button[], options?` |
-| `sendList()` | `Promise<MessageResponse>` | `to: string, bodyText: string, buttonText: string, sections: ListSection[], options?` |
-| `uploadMedia()` | `Promise<MediaResponse>` | `file: File \| Blob` |
-| `getMediaUrl()` | `Promise<MediaUrlResponse>` | `mediaId: string` |
-| `downloadMedia()` | `Promise<Blob>` | `mediaUrl: string` |
-
-## Media Types
-
-Supported media types:
-- `image` - JPEG, PNG
-- `video` - MP4, 3GPP
-- `audio` - AAC, MP3, AMR, OGG
-- `document` - PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
-
-## Error Handling
-
-All methods return promises and will throw errors if the API request fails:
-
-```typescript
-try {
-  await whatsapp.sendMessage('1234567890', 'Hello!');
-  console.log('Message sent successfully');
-} catch (error) {
-  console.error('Failed to send message:', error.message);
-}
-```
-
-## Rate Limits
-
-WhatsApp Cloud API has rate limits:
-- **80 messages per second** per phone number
-- **1000 conversations per day** for free tier
-- Check Meta documentation for current limits
-
-## Best Practices
-
-1. **Store tokens securely** - Never expose access tokens in client-side code
-2. **Validate phone numbers** - Ensure proper format before sending
-3. **Handle webhooks** - Set up webhook handlers to receive incoming messages
-4. **Use templates** - For initial contact, use approved message templates
-5. **Respect opt-ins** - Only message users who have opted in
-6. **Monitor API responses** - Check for errors and handle accordingly
 
 ## Webhook Integration
 
-To receive messages, you'll need to set up webhook handlers. Here's a basic Express.js + TypeScript example:
+### Option 1: Built-in Standalone Server
+
+Perfect for simple applications or microservices:
 
 ```typescript
-import express, { Request, Response } from 'express';
+import { WhatsAppHandler } from './whatsapp-handler';
 
-app.post('/webhook', async (req: Request, res: Response) => {
-  const data = req.body;
-  
-  if (data.entry?.[0]?.changes?.[0]?.value?.messages) {
-    const message = data.entry[0].changes[0].value.messages[0];
-    console.log('Received message:', message);
+const whatsapp = new WhatsAppHandler({
+  token: process.env.WHATSAPP_TOKEN!,
+  phoneNumberId: process.env.PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WEBHOOK_VERIFY_TOKEN!,
+  appSecret: process.env.APP_SECRET!
+});
+
+// Set up handlers
+whatsapp.setWebhookHandlers({
+  onMessage: async (message, metadata) => {
+    console.log('New message from:', metadata.displayName);
+    console.log('Message:', message.text?.body);
     
-    // Process message here
+    // Auto-reply
+    if (message.type === 'text') {
+      await whatsapp.sendMessage(
+        message.from,
+        `You said: ${message.text.body}`
+      );
+    }
+    
     // Mark as read
     await whatsapp.markAsRead(message.id);
-  }
+  },
   
-  res.sendStatus(200);
+  onMessageStatus: async (status) => {
+    console.log(`Message ${status.id} is now: ${status.status}`);
+  },
+  
+  onError: async (error) => {
+    console.error('Webhook error:', error);
+  }
+});
+
+// Start server on port 3000
+whatsapp.startWebhookServer(3000, '/webhook', () => {
+  console.log('Webhook server is ready!');
+});
+
+// To stop the server
+// await whatsapp.stopWebhookServer();
+```
+
+### Option 2: Express.js Integration
+
+```typescript
+import express from 'express';
+import { WhatsAppHandler } from './whatsapp-handler';
+
+const app = express();
+app.use(express.json());
+
+const whatsapp = new WhatsAppHandler({
+  token: process.env.WHATSAPP_TOKEN!,
+  phoneNumberId: process.env.PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WEBHOOK_VERIFY_TOKEN!,
+  appSecret: process.env.APP_SECRET!
+});
+
+// Set up message handlers
+whatsapp.setWebhookHandlers({
+  onMessage: async (message, metadata) => {
+    console.log('Message from:', metadata.displayName);
+    
+    if (message.type === 'text') {
+      await whatsapp.sendMessage(
+        message.from,
+        `Echo: ${message.text.body}`
+      );
+    }
+    
+    if (message.type === 'image') {
+      const mediaUrl = await whatsapp.getMediaUrl(message.image.id);
+      console.log('Image URL:', mediaUrl.url);
+    }
+    
+    await whatsapp.markAsRead(message.id);
+  },
+  
+  onMessageStatus: async (status) => {
+    console.log('Status update:', status.status);
+  }
+});
+
+// Webhook verification (GET)
+app.get('/webhook', (req, res) => {
+  const result = whatsapp.verifyWebhookRequest(req.query as any);
+  
+  if (result.success) {
+    res.status(200).send(result.challenge);
+  } else {
+    res.status(403).json({ error: result.error });
+  }
+});
+
+// Webhook events (POST)
+app.post('/webhook', async (req, res) => {
+  const signature = req.headers['x-hub-signature-256'] as string;
+  
+  try {
+    const result = await whatsapp.processWebhookRequest(req.body, signature);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('Express server running on port 3000');
 });
 ```
 
-## Troubleshooting
+### Option 3: Next.js API Routes
 
-**Message not sending?**
-- Verify phone number format (country code without +)
-- Check access token validity
-- Ensure phone number is verified
-- Verify you have active conversations quota
+#### App Router (Next.js 13+)
 
-**Media upload failing?**
-- Check file size (max 16MB for most types)
-- Verify file format is supported
-- Ensure proper content type
+Create `app/api/webhook/route.ts`:
 
-**Template rejected?**
-- Templates must be pre-approved by Meta
-- Check template name and language code
-- Verify parameter count matches template
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { WhatsAppHandler } from '@/lib/whatsapp-handler';
 
-**TypeScript compilation errors?**
-- Ensure you're using TypeScript 4.0+
-- Install required type definitions: `npm install @types/node`
+const whatsapp = new WhatsAppHandler({
+  token: process.env.WHATSAPP_TOKEN!,
+  phoneNumberId: process.env.PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WEBHOOK_VERIFY_TOKEN!,
+  appSecret: process.env.APP_SECRET!
+});
 
-## Resources
+// Set up handlers
+whatsapp.setWebhookHandlers({
+  onMessage: async (message, metadata) => {
+    console.log('Message from:', metadata.displayName);
+    
+    if (message.type === 'text') {
+      await whatsapp.sendMessage(
+        message.from,
+        `You said: ${message.text.body}`
+      );
+    }
+    
+    await whatsapp.markAsRead(message.id);
+  },
+  
+  onMessageStatus: async (status) => {
+    console.log('Status:', status.status);
+  }
+});
 
-- [WhatsApp Cloud API Documentation](https://developers.facebook.com/docs/whatsapp/cloud-api)
-- [Meta Business Suite](https://business.facebook.com)
-- [API Changelog](https://developers.facebook.com/docs/whatsapp/cloud-api/changelog)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+// GET - Webhook verification
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const query = Object.fromEntries(searchParams.entries());
+  
+  const result = whatsapp.verifyWebhookRequest(query);
+  
+  if (result.success) {
+    return new NextResponse(result.challenge, { status: 200 });
+  }
+  
+  return NextResponse.json({ error: result.error }, { status: 403 });
+}
+
+// POST - Webhook events
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const signature = request.headers.get('x-hub-signature-256') || undefined;
+    
+    const result = await whatsapp.processWebhookRequest(body, signature);
+    
+    return NextResponse.json(result, { status: 200 });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+#### Pages Router (Next.js 12 and below)
+
+Create `pages/api/webhook.ts`:
+
+```typescript
+import { NextApiRequest, NextApiResponse } from 'next';
+import { WhatsAppHandler } from '@/lib/whatsapp-handler';
+
+const whatsapp = new WhatsAppHandler({
+  token: process.env.WHATSAPP_TOKEN!,
+  phoneNumberId: process.env.PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WEBHOOK_VERIFY_TOKEN!,
+  appSecret: process.env.APP_SECRET!
+});
+
+whatsapp.setWebhookHandlers({
+  onMessage: async (message, metadata) => {
+    if (message.type === 'text') {
+      await whatsapp.sendMessage(message.from, `Echo: ${message.text.body}`);
+    }
+    await whatsapp.markAsRead(message.id);
+  }
+});
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === 'GET') {
+    // Webhook verification
+    const result = whatsapp.verifyWebhookRequest(req.query as any);
+    
+    if (result.success) {
+      return res.status(200).send(result.challenge);
+    }
+    
+    return res.status(403).json({ error: result.error });
+  }
+  
+  if (req.method === 'POST') {
+    // Webhook events
+    try {
+      const signature = req.headers['x-hub-signature-256'] as string;
+      const result = await whatsapp.processWebhookRequest(req.body, signature);
+      
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Webhook error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+  
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+```
+
+### Option 4: Fastify Integration
+
+```typescript
+import Fastify from 'fastify';
+import { WhatsAppHandler } from './whatsapp-handler';
+
+const fastify = Fastify({ logger: true });
+
+const whatsapp = new WhatsAppHandler({
+  token: process.env.WHATSAPP_TOKEN!,
+  phoneNumberId: process.env.PHONE_NUMBER_ID!,
+  webhookVerifyToken: process.env.WEBHOOK_VERIFY_TOKEN!,
+  appSecret: process.env.APP_SECRET!
+});
+
+whatsapp.setWebhookHandlers({
+  onMessage: async (message, metadata) => {
+    if (message.type === 'text') {
+      await whatsapp.sendMessage(message.from, `Echo: ${message.text.body}`);
+    }
+  }
+});
+
+// Webhook verification
+fastify.get('/webhook', async (request, reply) => {
+  const result = whatsapp.verifyWebhookRequest(request.query as any);
+  
+  if (result.success) {
+    return reply.status(200).send(result.challenge);
+  }
+  
+  return reply.status(403).send({ error: result.error });
+});
+
+// Webhook events
+fastify.post('/webhook', async (request, reply) => {
+  const signature = request.headers['x-hub-signature-256'] as string;
+  
+  try {
+    const result = await whatsapp.processWebhookRequest(request.body as any, signature);
+    return reply.status(200).send(result);
+  } catch (error) {
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
+});
+
+fastify.listen({ port: 3000 }, (err) => {
+  if (err) throw err;
+  console.log('Fastify server running on port 3000');
+});
+```
+
+## Advanced Features
+
+### Media Upload
+
+```typescript
+import fs from 'fs';
+
+// Upload from file
+const fileBuffer = fs.readFileSync('./image.jpg');
+const result = await whatsapp.uploadMedia(fileBuffer, 'image/jpeg');
+console.log('Media ID:', result.id);
+
+// Send uploaded media
+await whatsapp.sendMedia('1234567890', 'image', result.id, 'Caption');
+
+// Get media URL
+const mediaInfo = await whatsapp.getMediaUrl('MEDIA_ID');
+console.log('URL:', mediaInfo.url);
+
+// Delete media
+await whatsapp.deleteMedia('MEDIA_ID');
+```
+
+### Interactive Messages
+
+```typescript
+// Button message
+await whatsapp.sendInteractive('1234567890', {
+  type: 'button',
+  body: { text: 'Select an option:' },
+  footer: { text: 'Powered by WhatsApp' },
+  action: {
+    buttons: [
+      { type: 'reply', reply: { id: 'yes', title: 'Yes ✓' } },
+      { type: 'reply', reply: { id: 'no', title: 'No ✗' } }
+    ]
+  }
+});
+
+// List message
+await whatsapp.sendInteractive('1234567890', {
+  type: 'list',
+  body: { text: 'Choose from menu:' },
+  action: {
+    button: 'View Menu',
+    sections: [
+      {
+        title: 'Main Courses',
+        rows: [
+          { id: 'pizza', title: 'Pizza', description: '$12.99' },
+          { id: 'burger', title: 'Burger', description: '$9.99' }
+        ]
+      },
+      {
+        title: 'Drinks',
+        rows: [
+          { id: 'coke', title: 'Coca Cola', description: '$2.99' }
+        ]
+      }
+    ]
+  }
+});
+```
+
+### Business Profile Management
+
+```typescript
+// Get business profile
+const profile = await whatsapp.getBusinessProfile();
+console.log(profile);
+
+// Update business profile
+await whatsapp.updateBusinessProfile({
+  about: 'Welcome to our business!',
+  address: '123 Main St, City',
+  description: 'We provide excellent service',
+  email: 'contact@business.com',
+  websites: ['https://business.com'],
+  vertical: 'RETAIL'
+});
+```
+
+### Webhook Management
+
+```typescript
+// Register webhook with Meta
+await whatsapp.registerWebhook(
+  'https://yourdomain.com/webhook',
+  ['messages', 'message_status']
+);
+
+// Get current subscriptions
+const subscriptions = await whatsapp.getWebhookSubscriptions();
+console.log(subscriptions);
+
+// Test webhook
+const testResult = await whatsapp.testWebhook('https://yourdomain.com/webhook');
+console.log('Test result:', testResult);
+```
+
+## Webhook Event Handlers
+
+```typescript
+whatsapp.setWebhookHandlers({
+  // Incoming messages
+  onMessage: async (message, metadata) => {
+    console.log('Message type:', message.type);
+    console.log('From:', metadata.displayName);
+    
+    switch (message.type) {
+      case 'text':
+        console.log('Text:', message.text.body);
+        break;
+      case 'image':
+        console.log('Image ID:', message.image.id);
+        break;
+      case 'video':
+        console.log('Video ID:', message.video.id);
+        break;
+      case 'audio':
+        console.log('Audio ID:', message.audio.id);
+        break;
+      case 'document':
+        console.log('Document:', message.document.filename);
+        break;
+      case 'location':
+        console.log('Location:', message.location.latitude, message.location.longitude);
+        break;
+      case 'button':
+        console.log('Button clicked:', message.button.text);
+        break;
+      case 'interactive':
+        if (message.interactive.type === 'button_reply') {
+          console.log('Button ID:', message.interactive.button_reply.id);
+        } else if (message.interactive.type === 'list_reply') {
+          console.log('List item:', message.interactive.list_reply.title);
+        }
+        break;
+    }
+  },
+  
+  // Message status updates
+  onMessageStatus: async (status) => {
+    console.log(`Message ${status.id}: ${status.status}`);
+    // Status values: 'sent', 'delivered', 'read', 'failed'
+    
+    if (status.errors) {
+      console.error('Error:', status.errors);
+    }
+  },
+  
+  // Account updates
+  onAccountUpdate: async (update) => {
+    console.log('Account update:', update);
+  },
+  
+  // Phone number changes
+  onPhoneChange: async (change) => {
+    console.log('Phone number changed:', change);
+  },
+  
+  // Error handling
+  onError: async (error) => {
+    console.error('Webhook error:', error);
+  },
+  
+  // Unknown events
+  onUnknown: async (event) => {
+    console.log('Unknown event:', event);
+  }
+});
+```
+
+## Error Handling
+
+```typescript
+import { WhatsAppError, RateLimitError, WebhookVerificationError } from './whatsapp-handler';
+
+try {
+  await whatsapp.sendMessage('1234567890', 'Hello!');
+} catch (error) {
+  if (error instanceof RateLimitError) {
+    console.log('Rate limited. Retry after:', error.retryAfter, 'seconds');
+  } else if (error instanceof WebhookVerificationError) {
+    console.error('Webhook verification failed:', error.message);
+  } else if (error instanceof WhatsAppError) {
+    console.error('WhatsApp API error:', error.code, error.message);
+    console.error('Details:', error.details);
+  } else {
+    console.error('Unexpected error:', error);
+  }
+}
+```
+
+## Environment Variables
+
+Create a `.env` file:
+
+```env
+WHATSAPP_TOKEN=your_access_token
+PHONE_NUMBER_ID=your_phone_number_id
+WEBHOOK_VERIFY_TOKEN=your_verify_token
+APP_SECRET=your_app_secret
+BUSINESS_ACCOUNT_ID=your_business_account_id
+```
+
+## Configuration Options
+
+```typescript
+{
+  token: string;                  // Required: WhatsApp Access Token
+  phoneNumberId: string;          // Required: Phone Number ID
+  businessAccountId?: string;     // Optional: For webhook registration
+  version?: string;               // Optional: API version (default: 'v21.0')
+  appSecret?: string;             // Optional: For signature verification
+  webhookVerifyToken?: string;    // Optional: For webhook verification
+  apiTimeout?: number;            // Optional: Request timeout in ms (default: 30000)
+  maxRetries?: number;            // Optional: Max retry attempts (default: 3)
+  rateLimitPerSecond?: number;    // Optional: Rate limit (default: 80)
+}
+```
+
+## TypeScript Support
+
+Full TypeScript definitions included:
+
+```typescript
+import {
+  WhatsAppHandler,
+  WhatsAppConfig,
+  WebhookHandlers,
+  MessageMetadata,
+  MediaType,
+  TextMessage,
+  MediaMessage,
+  LocationMessage,
+  ContactMessage,
+  TemplateMessage,
+  InteractiveMessage,
+  WhatsAppError,
+  RateLimitError,
+  WebhookVerificationError
+} from './whatsapp-handler';
+```
+
+## Testing
+
+Test your webhook locally using ngrok:
+
+```bash
+# Install ngrok
+npm install -g ngrok
+
+# Start your server
+node server.js
+
+# In another terminal, expose your local server
+ngrok http 3000
+
+# Use the ngrok URL in Meta Business Suite
+# Example: https://abc123.ngrok.io/webhook
+```
+
+## Security Best Practices
+
+1. **Always verify webhook signatures** in production
+2. **Use environment variables** for sensitive data
+3. **Implement rate limiting** on your endpoints
+4. **Validate incoming data** before processing
+5. **Use HTTPS** for webhook URLs
+6. **Rotate tokens** regularly
+
+## Common Issues
+
+### Webhook Verification Failed
+- Ensure `webhookVerifyToken` matches the one in Meta Business Suite
+- Check that your server is publicly accessible
+
+### Signature Verification Failed
+- Verify `appSecret` is correct
+- Ensure you're passing the raw request body (not parsed)
+
+### Rate Limiting
+- Respect WhatsApp's rate limits (80 requests/second by default)
+- The handler automatically retries with backoff
+
+### Media Upload Issues
+- Check file size limits (image: 5MB, video: 16MB, document: 100MB)
+- Verify MIME type is correct
 
 ## License
 
-MIT License - feel free to use this in your projects!
+MIT
 
 ## Contributing
 
-Contributions are welcome! Feel free to submit issues or pull requests.
+Contributions are welcome! Please open an issue or submit a pull request.
 
 ## Support
 
-For API-specific issues, refer to [Meta's WhatsApp Business Platform Support](https://developers.facebook.com/support).
+For issues and questions:
+- WhatsApp Business API Documentation: https://developers.facebook.com/docs/whatsapp
+- GitHub Issues: [Your repo URL]
 
----
+## Changelog
 
-**Note**: This handler requires an active Meta Business account and WhatsApp Business API access. Pricing applies based on conversation volume.
+### v1.0.0
+- Initial release
+- Full WhatsApp Business API support
+- Webhook handling with signature verification
+- Built-in HTTP server
+- Express.js, Next.js, and Fastify integration examples
+- TypeScript support
+- Rate limiting and retry mechanisms
