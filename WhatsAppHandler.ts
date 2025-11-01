@@ -1,9 +1,8 @@
 /**
  * WhatsApp Meta Business API Handler
- * A comprehensive class to interact with WhatsApp Cloud API
+ * A comprehensive TypeScript class to interact with WhatsApp Cloud API
  */
 
-// Define interfaces for better type safety
 interface WhatsAppConfig {
   token: string;
   phoneNumberId: string;
@@ -13,38 +12,26 @@ interface WhatsAppConfig {
 
 interface MessageResponse {
   messaging_product: string;
-  contacts?: Array<{
-    input: string;
-    wa_id: string;
-  }>;
-  messages?: Array<{
-    id: string;
-  }>;
-  error?: {
-    message: string;
-    type: string;
-    code: number;
-    error_data?: {
-      details: string;
-    };
-  };
+  contacts: Array<{ input: string; wa_id: string }>;
+  messages: Array<{ id: string }>;
 }
 
-interface MediaObject {
-  link?: string;
-  id?: string;
-  caption?: string;
-  filename?: string;
+interface MediaResponse {
+  id: string;
 }
 
-interface ButtonObject {
+interface MediaUrlResponse {
+  url: string;
+  mime_type: string;
+  sha256: string;
+  file_size: number;
+  id: string;
+  messaging_product: string;
+}
+
+interface Button {
   id: string;
   title: string;
-}
-
-interface InteractiveOptions {
-  header?: string;
-  footer?: string;
 }
 
 interface ListSection {
@@ -56,17 +43,25 @@ interface ListSection {
   }>;
 }
 
-// Constants
-const DEFAULT_API_VERSION = 'v21.0';
-const VALID_MEDIA_TYPES = ['image', 'video', 'audio', 'document'] as const;
-type MediaType = typeof VALID_MEDIA_TYPES[number];
+interface TemplateComponent {
+  type: string;
+  parameters?: Array<{
+    type: string;
+    text?: string;
+    image?: { link: string };
+    video?: { link: string };
+    document?: { link: string };
+  }>;
+}
+
+type MediaType = 'image' | 'video' | 'audio' | 'document';
 
 class WhatsAppHandler {
-  private readonly token: string;
-  private readonly phoneNumberId: string;
-  private readonly businessAccountId: string;
-  private readonly version: string;
-  private readonly baseUrl: string;
+  private token: string;
+  private phoneNumberId: string;
+  private businessAccountId: string;
+  private version: string;
+  private baseUrl: string;
 
   /**
    * Initialize WhatsApp Handler
@@ -76,30 +71,26 @@ class WhatsAppHandler {
     this.token = config.token;
     this.phoneNumberId = config.phoneNumberId;
     this.businessAccountId = config.businessAccountId || '';
-    this.version = config.version || DEFAULT_API_VERSION;
+    this.version = config.version || 'v21.0';
     this.baseUrl = `https://graph.facebook.com/${this.version}`;
   }
 
   /**
    * Make API request to WhatsApp
    * @private
-   * @param endpoint - API endpoint
-   * @param method - HTTP method
-   * @param data - Request body data
-   * @returns Promise with API response
    */
-  private async _makeRequest<T = any>(
+  private async _makeRequest<T>(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-    data: object | null = null
+    data: any = null
   ): Promise<T> {
     const url = `${this.baseUrl}/${endpoint}`;
     const options: RequestInit = {
       method,
       headers: {
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-      },
+        'Authorization': `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      }
     };
 
     if (data && (method === 'POST' || method === 'PUT')) {
@@ -109,13 +100,12 @@ class WhatsAppHandler {
     try {
       const response = await fetch(url, options);
       const result = await response.json();
-
+      
       if (!response.ok) {
-        const errorMessage = result.error?.message || 'API request failed';
-        throw new Error(errorMessage);
+        throw new Error(result.error?.message || 'API request failed');
       }
-
-      return result;
+      
+      return result as T;
     } catch (error) {
       console.error('WhatsApp API Error:', error);
       throw error;
@@ -126,21 +116,25 @@ class WhatsAppHandler {
    * Send a text message
    * @param to - Recipient phone number (with country code, no + sign)
    * @param message - Message text
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendMessage(to: string, message: string): Promise<MessageResponse> {
     const data = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to,
+      to: to,
       type: 'text',
       text: {
         preview_url: true,
-        body: message,
-      },
+        body: message
+      }
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
@@ -149,7 +143,7 @@ class WhatsAppHandler {
    * @param mediaType - Type: 'image', 'video', 'audio', 'document'
    * @param mediaUrl - URL or media ID
    * @param options - Additional options (caption, filename)
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendMedia(
     to: string,
@@ -157,11 +151,12 @@ class WhatsAppHandler {
     mediaUrl: string,
     options: { caption?: string; filename?: string } = {}
   ): Promise<MessageResponse> {
-    if (!VALID_MEDIA_TYPES.includes(mediaType)) {
-      throw new Error(`Invalid media type. Must be one of: ${VALID_MEDIA_TYPES.join(', ')}`);
+    const validTypes: MediaType[] = ['image', 'video', 'audio', 'document'];
+    if (!validTypes.includes(mediaType)) {
+      throw new Error(`Invalid media type. Must be one of: ${validTypes.join(', ')}`);
     }
 
-    const mediaObject: MediaObject = mediaUrl.startsWith('http')
+    const mediaObject: any = mediaUrl.startsWith('http') 
       ? { link: mediaUrl }
       : { id: mediaUrl };
 
@@ -176,12 +171,16 @@ class WhatsAppHandler {
     const data = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to,
+      to: to,
       type: mediaType,
-      [mediaType]: mediaObject,
+      [mediaType]: mediaObject
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
@@ -190,7 +189,7 @@ class WhatsAppHandler {
    * @param mediaType - Type: 'image', 'video', 'document'
    * @param mediaUrl - URL or media ID
    * @param caption - Caption text
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendMediaWithMessage(
     to: string,
@@ -198,31 +197,35 @@ class WhatsAppHandler {
     mediaUrl: string,
     caption: string
   ): Promise<MessageResponse> {
-    return this.sendMedia(to, mediaType, mediaUrl, { caption });
+    return await this.sendMedia(to, mediaType, mediaUrl, { caption });
   }
 
   /**
    * Mark message as read
    * @param messageId - Message ID to mark as read
-   * @returns Promise with API response
+   * @returns API response
    */
-  async markAsRead(messageId: string): Promise<MessageResponse> {
+  async markAsRead(messageId: string): Promise<{ success: boolean }> {
     const data = {
       messaging_product: 'whatsapp',
       status: 'read',
-      message_id: messageId,
+      message_id: messageId
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<{ success: boolean }>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
    * Read/Get message by ID
    * @param messageId - Message ID
-   * @returns Promise with message data
+   * @returns Message data
    */
   async readMessage(messageId: string): Promise<any> {
-    return this._makeRequest(messageId);
+    return await this._makeRequest<any>(messageId, 'GET');
   }
 
   /**
@@ -230,21 +233,29 @@ class WhatsAppHandler {
    * @param to - Recipient phone number
    * @param messageId - Message ID to react to
    * @param emoji - Emoji reaction
-   * @returns Promise with API response
+   * @returns API response
    */
-  async sendReaction(to: string, messageId: string, emoji: string): Promise<MessageResponse> {
+  async sendReaction(
+    to: string,
+    messageId: string,
+    emoji: string
+  ): Promise<MessageResponse> {
     const data = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to,
+      to: to,
       type: 'reaction',
       reaction: {
         message_id: messageId,
-        emoji,
-      },
+        emoji: emoji
+      }
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
@@ -254,7 +265,7 @@ class WhatsAppHandler {
    * @param longitude - Longitude
    * @param name - Location name
    * @param address - Location address
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendLocation(
     to: string,
@@ -265,17 +276,21 @@ class WhatsAppHandler {
   ): Promise<MessageResponse> {
     const data = {
       messaging_product: 'whatsapp',
-      to,
+      to: to,
       type: 'location',
       location: {
-        latitude,
-        longitude,
-        name,
-        address,
-      },
+        latitude: latitude,
+        longitude: longitude,
+        name: name,
+        address: address
+      }
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
@@ -284,56 +299,60 @@ class WhatsAppHandler {
    * @param templateName - Template name
    * @param languageCode - Language code (e.g., 'en_US')
    * @param components - Template components/parameters
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendTemplate(
     to: string,
     templateName: string,
     languageCode: string,
-    components: any[] = []
+    components: TemplateComponent[] = []
   ): Promise<MessageResponse> {
     const data = {
       messaging_product: 'whatsapp',
-      to,
+      to: to,
       type: 'template',
       template: {
         name: templateName,
         language: {
-          code: languageCode,
+          code: languageCode
         },
-        components,
-      },
+        components: components
+      }
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
    * Send interactive buttons
    * @param to - Recipient phone number
    * @param bodyText - Message body text
-   * @param buttons - Array of button objects [{id, title}]
+   * @param buttons - Array of button objects
    * @param options - Optional header and footer
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendButtons(
     to: string,
     bodyText: string,
-    buttons: ButtonObject[],
-    options: InteractiveOptions = {}
+    buttons: Button[],
+    options: { header?: string; footer?: string } = {}
   ): Promise<MessageResponse> {
-    const buttonObjects = buttons.map((btn) => ({
+    const buttonObjects = buttons.map(btn => ({
       type: 'reply',
       reply: {
         id: btn.id,
-        title: btn.title,
-      },
+        title: btn.title
+      }
     }));
 
     const interactive: any = {
       type: 'button',
       body: { text: bodyText },
-      action: { buttons: buttonObjects },
+      action: { buttons: buttonObjects }
     };
 
     if (options.header) {
@@ -347,12 +366,16 @@ class WhatsAppHandler {
     const data = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to,
+      to: to,
       type: 'interactive',
-      interactive,
+      interactive: interactive
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
@@ -362,22 +385,22 @@ class WhatsAppHandler {
    * @param buttonText - Button text
    * @param sections - Array of sections with rows
    * @param options - Optional header and footer
-   * @returns Promise with API response
+   * @returns API response
    */
   async sendList(
     to: string,
     bodyText: string,
     buttonText: string,
     sections: ListSection[],
-    options: InteractiveOptions = {}
+    options: { header?: string; footer?: string } = {}
   ): Promise<MessageResponse> {
     const interactive: any = {
       type: 'list',
       body: { text: bodyText },
       action: {
         button: buttonText,
-        sections,
-      },
+        sections: sections
+      }
     };
 
     if (options.header) {
@@ -391,20 +414,24 @@ class WhatsAppHandler {
     const data = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to,
+      to: to,
       type: 'interactive',
-      interactive,
+      interactive: interactive
     };
 
-    return this._makeRequest<MessageResponse>(`${this.phoneNumberId}/messages`, 'POST', data);
+    return await this._makeRequest<MessageResponse>(
+      `${this.phoneNumberId}/messages`,
+      'POST',
+      data
+    );
   }
 
   /**
    * Upload media to WhatsApp
    * @param file - File to upload
-   * @returns Promise with media ID response
+   * @returns Media ID response
    */
-  async uploadMedia(file: File | Blob): Promise<any> {
+  async uploadMedia(file: File | Blob): Promise<MediaResponse> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('messaging_product', 'whatsapp');
@@ -413,37 +440,61 @@ class WhatsAppHandler {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.token}`,
+        'Authorization': `Bearer ${this.token}`
       },
-      body: formData,
+      body: formData
     });
 
-    return response.json();
+    return await response.json();
   }
 
   /**
    * Get media URL by ID
    * @param mediaId - Media ID
-   * @returns Promise with media URL and details
+   * @returns Media URL and details
    */
-  async getMediaUrl(mediaId: string): Promise<any> {
-    return this._makeRequest(mediaId);
+  async getMediaUrl(mediaId: string): Promise<MediaUrlResponse> {
+    return await this._makeRequest<MediaUrlResponse>(mediaId, 'GET');
   }
 
   /**
    * Download media file
    * @param mediaUrl - Media URL from getMediaUrl
-   * @returns Promise with media file blob
+   * @returns Media file blob
    */
   async downloadMedia(mediaUrl: string): Promise<Blob> {
     const response = await fetch(mediaUrl, {
       headers: {
-        Authorization: `Bearer ${this.token}`,
-      },
+        'Authorization': `Bearer ${this.token}`
+      }
     });
 
-    return response.blob();
+    return await response.blob();
   }
 }
+
+// Usage Example:
+/*
+const whatsapp = new WhatsAppHandler({
+  token: 'YOUR_ACCESS_TOKEN',
+  phoneNumberId: 'YOUR_PHONE_NUMBER_ID',
+  version: 'v21.0'
+});
+
+// Send text message
+await whatsapp.sendMessage('1234567890', 'Hello from WhatsApp API!');
+
+// Send image with caption
+await whatsapp.sendMediaWithMessage('1234567890', 'image', 'https://example.com/image.jpg', 'Check this out!');
+
+// Mark message as read
+await whatsapp.markAsRead('wamid.XXX==');
+
+// Send buttons
+await whatsapp.sendButtons('1234567890', 'Choose an option:', [
+  { id: 'btn1', title: 'Option 1' },
+  { id: 'btn2', title: 'Option 2' }
+]);
+*/
 
 export default WhatsAppHandler;

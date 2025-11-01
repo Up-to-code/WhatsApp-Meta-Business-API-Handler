@@ -1,9 +1,10 @@
 # WhatsApp Meta Business API Handler
 
-A comprehensive JavaScript class for interacting with the WhatsApp Cloud API (Meta Business Platform). This handler simplifies sending messages, media, interactive buttons, templates, and more through WhatsApp Business.
+A lightweight, easy-to-use TypeScript wrapper for WhatsApp Cloud API. Send messages, media, buttons, and more with full type safety.
 
 ## Features
 
+- ✅ **Full TypeScript support** with type definitions
 - ✅ Send text messages
 - ✅ Send media (images, videos, audio, documents)
 - ✅ Mark messages as read
@@ -27,19 +28,21 @@ Before using this handler, you need:
 
 ## Installation
 
-Simply import the class into your project:
-
-```javascript
-import WhatsAppHandler from './WhatsAppHandler.js';
+```bash
+npm install @types/node
 ```
 
-Or copy the class directly into your codebase.
+Then import the class:
+
+```typescript
+import WhatsAppHandler from './WhatsAppHandler';
+```
 
 ## Configuration
 
 Initialize the handler with your credentials:
 
-```javascript
+```typescript
 const whatsapp = new WhatsAppHandler({
   token: 'YOUR_ACCESS_TOKEN',
   phoneNumberId: 'YOUR_PHONE_NUMBER_ID',
@@ -58,7 +61,7 @@ const whatsapp = new WhatsAppHandler({
 
 ### Send Text Message
 
-```javascript
+```typescript
 await whatsapp.sendMessage('1234567890', 'Hello from WhatsApp API!');
 ```
 
@@ -66,7 +69,7 @@ await whatsapp.sendMessage('1234567890', 'Hello from WhatsApp API!');
 
 ### Send Image with Caption
 
-```javascript
+```typescript
 await whatsapp.sendMediaWithMessage(
   '1234567890', 
   'image', 
@@ -77,7 +80,7 @@ await whatsapp.sendMediaWithMessage(
 
 ### Send Document
 
-```javascript
+```typescript
 await whatsapp.sendMedia(
   '1234567890',
   'document',
@@ -88,19 +91,19 @@ await whatsapp.sendMedia(
 
 ### Mark Message as Read
 
-```javascript
+```typescript
 await whatsapp.markAsRead('wamid.HBgNMTIzNDU2Nzg5MAxx==');
 ```
 
 ### Send Reaction
 
-```javascript
+```typescript
 await whatsapp.sendReaction('1234567890', 'wamid.XXX==', '👍');
 ```
 
 ### Send Location
 
-```javascript
+```typescript
 await whatsapp.sendLocation(
   '1234567890',
   37.7749,
@@ -112,7 +115,7 @@ await whatsapp.sendLocation(
 
 ### Send Interactive Buttons
 
-```javascript
+```typescript
 await whatsapp.sendButtons(
   '1234567890',
   'Please select an option:',
@@ -130,7 +133,7 @@ await whatsapp.sendButtons(
 
 ### Send Interactive List
 
-```javascript
+```typescript
 await whatsapp.sendList(
   '1234567890',
   'Choose a product category:',
@@ -160,7 +163,7 @@ await whatsapp.sendList(
 
 ### Send Template Message
 
-```javascript
+```typescript
 await whatsapp.sendTemplate(
   '1234567890',
   'hello_world',
@@ -178,7 +181,7 @@ await whatsapp.sendTemplate(
 
 ### Upload Media
 
-```javascript
+```typescript
 // Upload from File object
 const file = document.getElementById('fileInput').files[0];
 const response = await whatsapp.uploadMedia(file);
@@ -190,14 +193,14 @@ await whatsapp.sendMedia('1234567890', 'image', response.id);
 
 ### Get Media URL
 
-```javascript
+```typescript
 const mediaInfo = await whatsapp.getMediaUrl('MEDIA_ID');
 console.log('Media URL:', mediaInfo.url);
 ```
 
 ### Download Media
 
-```javascript
+```typescript
 const mediaUrl = 'https://lookaside.fbsbx.com/whatsapp_business/...';
 const blob = await whatsapp.downloadMedia(mediaUrl);
 
@@ -209,23 +212,75 @@ a.download = 'media-file';
 a.click();
 ```
 
+## TypeScript Types
+
+### Interfaces
+
+```typescript
+interface WhatsAppConfig {
+  token: string;
+  phoneNumberId: string;
+  businessAccountId?: string;
+  version?: string;
+}
+
+interface Button {
+  id: string;
+  title: string;
+}
+
+interface ListSection {
+  title: string;
+  rows: Array<{
+    id: string;
+    title: string;
+    description?: string;
+  }>;
+}
+
+type MediaType = 'image' | 'video' | 'audio' | 'document';
+```
+
+### Response Types
+
+```typescript
+interface MessageResponse {
+  messaging_product: string;
+  contacts: Array<{ input: string; wa_id: string }>;
+  messages: Array<{ id: string }>;
+}
+
+interface MediaResponse {
+  id: string;
+}
+
+interface MediaUrlResponse {
+  url: string;
+  mime_type: string;
+  sha256: string;
+  file_size: number;
+  id: string;
+  messaging_product: string;
+}
+```
+
 ## API Methods Reference
 
-| Method | Description | Parameters |
+| Method | Return Type | Parameters |
 |--------|-------------|------------|
-| `sendMessage()` | Send text message | `to, message` |
-| `sendMedia()` | Send media file | `to, mediaType, mediaUrl, options` |
-| `sendMediaWithMessage()` | Send media with caption | `to, mediaType, mediaUrl, caption` |
-| `markAsRead()` | Mark message as read | `messageId` |
-| `readMessage()` | Get message details | `messageId` |
-| `sendReaction()` | React to message | `to, messageId, emoji` |
-| `sendLocation()` | Send location | `to, latitude, longitude, name, address` |
-| `sendTemplate()` | Send template message | `to, templateName, languageCode, components` |
-| `sendButtons()` | Send interactive buttons | `to, bodyText, buttons, options` |
-| `sendList()` | Send interactive list | `to, bodyText, buttonText, sections, options` |
-| `uploadMedia()` | Upload media to WhatsApp | `file` |
-| `getMediaUrl()` | Get media URL | `mediaId` |
-| `downloadMedia()` | Download media file | `mediaUrl` |
+| `sendMessage()` | `Promise<MessageResponse>` | `to: string, message: string` |
+| `sendMedia()` | `Promise<MessageResponse>` | `to: string, mediaType: MediaType, mediaUrl: string, options?` |
+| `sendMediaWithMessage()` | `Promise<MessageResponse>` | `to: string, mediaType: MediaType, mediaUrl: string, caption: string` |
+| `markAsRead()` | `Promise<{success: boolean}>` | `messageId: string` |
+| `readMessage()` | `Promise<any>` | `messageId: string` |
+| `sendReaction()` | `Promise<MessageResponse>` | `to: string, messageId: string, emoji: string` |
+| `sendLocation()` | `Promise<MessageResponse>` | `to: string, latitude: number, longitude: number, name: string, address: string` |
+| `sendTemplate()` | `Promise<MessageResponse>` | `to: string, templateName: string, languageCode: string, components?` |
+| `sendButtons()` | `Promise<MessageResponse>` | `to: string, bodyText: string, buttons: Button[], options?` |
+| `sendList()` | `Promise<MessageResponse>` | `to: string, bodyText: string, buttonText: string, sections: ListSection[], options?` |
+| `uploadMedia()` | `Promise<MediaResponse>` | `file: File \| Blob` |
+| `getMediaUrl()` | `Promise<MediaUrlResponse>` | `mediaId: string` |
+| `downloadMedia()` | `Promise<Blob>` | `mediaUrl: string` |
 
 ## Media Types
 
@@ -239,7 +294,7 @@ Supported media types:
 
 All methods return promises and will throw errors if the API request fails:
 
-```javascript
+```typescript
 try {
   await whatsapp.sendMessage('1234567890', 'Hello!');
   console.log('Message sent successfully');
@@ -266,10 +321,12 @@ WhatsApp Cloud API has rate limits:
 
 ## Webhook Integration
 
-To receive messages, you'll need to set up webhook handlers. Here's a basic Express.js example:
+To receive messages, you'll need to set up webhook handlers. Here's a basic Express.js + TypeScript example:
 
-```javascript
-app.post('/webhook', (req, res) => {
+```typescript
+import express, { Request, Response } from 'express';
+
+app.post('/webhook', async (req: Request, res: Response) => {
   const data = req.body;
   
   if (data.entry?.[0]?.changes?.[0]?.value?.messages) {
@@ -303,11 +360,16 @@ app.post('/webhook', (req, res) => {
 - Check template name and language code
 - Verify parameter count matches template
 
+**TypeScript compilation errors?**
+- Ensure you're using TypeScript 4.0+
+- Install required type definitions: `npm install @types/node`
+
 ## Resources
 
 - [WhatsApp Cloud API Documentation](https://developers.facebook.com/docs/whatsapp/cloud-api)
 - [Meta Business Suite](https://business.facebook.com)
 - [API Changelog](https://developers.facebook.com/docs/whatsapp/cloud-api/changelog)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
 
 ## License
 
